@@ -1,0 +1,39 @@
+# ======================
+# pg-clone .gitignore
+# ======================
+
+# Dump files (schema + data)
+dumps/
+*.sql
+*.dump
+
+# Local Postgres data volume
+pgdata/
+
+# Init scripts generati localmente (se non vuoi versionarli tutti)
+# initdb.d/
+
+# Credentials
+.pgpass
+*.pgpass
+*.env
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Python / virtualenv (se usato per tooling extra)
+__pycache__/
+*.py[cod]
+.venv/
+env/
+venv/
+
+# Logs
+*.log
+
+# Container / build artefacts
+*.pid

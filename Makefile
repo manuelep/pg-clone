@@ -68,8 +68,11 @@ endif
 	@echo "Container pronto! Tutti i dump saranno stati ripristinati automaticamente."
 
 # Alias comodo
-.PHONY: run-local-db log
+.PHONY: run-local-db log stop
 run-local-db: docker-init
 
 log:
 	@docker logs -f pg_init
+
+stop:
+	@docker stop pg_init

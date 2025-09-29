@@ -72,7 +72,7 @@ endif
 run-local-db: docker-init
 
 log:
-	@docker logs -f pg_init
+	@docker logs -f $(CONTAINER_NAME)
 
 stop:
-	@docker stop pg_init
+	@docker stop $(CONTAINER_NAME)

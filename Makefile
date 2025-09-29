@@ -18,6 +18,11 @@ PGPASSWORD ?= changemeWithSomethingR3allySecure!
 PERSISTENT ?= no
 DATA_VOLUME ?= $(PWD)/pgdata
 
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
 # File pgpass locale
 PGPASS_FILE ?= $(HOME)/.pgpass
 

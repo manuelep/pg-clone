@@ -37,3 +37,9 @@ venv/
 
 # Container / build artefacts
 *.pid
+
+# Local files to ignore
+.env
+.vscode/
+databases.txt
+dumps/

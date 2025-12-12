@@ -22,8 +22,9 @@ fi
 for data_file in "$DUMP_DIR"/*_data.dump; do
     [ -f "$data_file" ] || continue
     db_name=$(basename "$data_file" _data.dump)
-    echo "--- Ripristino dati di $db_name ---"
-    pg_restore -U "$PGUSER" -d "$db_name" "$data_file"
+    echo "--- Ripristino dati di $db_name in corso ---"
+    pg_restore -v --disable-triggers -U "$PGUSER" -d "$db_name" "$data_file"
+    echo "--- Ripristino dati di $db_name completato ---"
 done
 
 echo "=== Ripristino completato ==="

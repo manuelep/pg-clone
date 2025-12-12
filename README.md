@@ -20,22 +20,36 @@ Uno strumento semplice per **clonare un cluster PostgreSQL remoto in locale** us
 
 ## 🔧 Configurazione
 
-Tutte le variabili principali sono configurabili via ambiente o modificando il `Makefile`:
+Tutte le variabili principali sono configurabili creando un file `.env` nella root del progetto. Questo file viene letto automaticamente dal `Makefile`.
 
-```makefile
-REMOTE_HOST     = my.remote.host
-REMOTE_PGUSER   = postgres
-REMOTE_PGPORT   = 5432
+Copia e personalizza il seguente esempio:
 
-PGUSER          = postgres
-PGPASSWORD      = secret
-PGPORT          = 5432
+``env
+# --- Server Remoto ---
+REMOTE_HOST=144.76.198.119      # L'indirizzo IP o l'host del server da clonare
+REMOTE_PGPORT=5434              # Porta del server remoto (standard: 5432)
 
-DUMP_DIR        = $(PWD)/dumps
-INITDB_DIR      = $(PWD)/initdb.d
-DATA_VOLUME     = $(PWD)/pgdata
-PERSISTENT      = no
+# --- Container Locale ---
+# Adatta il più possibile la versione del dbms locale a quella remota per una piena compatibilità
+DOCKER_IMAGE=postgis/postgis:16-3.5
+CONTAINER_NAME=pg_init          # Nome del container locale
+
+# La porta locale 5432 è già occupata da un altro Postgres? 
+# Impostane una diversa (es. 5435) per evitare conflitti:
+PGPORT=5432                     
+
+# Scegli una password robusta per il superutente del tuo ambiente locale:
+PGPASSWORD=changemeWithSomethingR3allySecure!
+
+# Vuoi che i dati sopravvivano al riavvio del container?
+# 'yes' crea una cartella 'pgdata' locale, 'no' (default) tiene tutto in memoria (effimero):
+PERSISTENT=no
 ```
+
+### Note
+
+- Scegli l'immagine migliore tra quelle disponibili su [hub.docker.com](https://hub.docker.com/search?q=postgresql).
+- Personalizza il nome del container locale per una migliore riconoscibilità del servizio una volta avviato sul tuo sistema.
 
 ## 🎯 Selezione dei Database (Opzionale)
 

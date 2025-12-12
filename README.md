@@ -37,6 +37,18 @@ DATA_VOLUME     = $(PWD)/pgdata
 PERSISTENT      = no
 ```
 
+## 🎯 Selezione dei Database (Opzionale)
+
+Per impostazione predefinita, `make dump` esegue il backup di **tutti** i database presenti sul server remoto. Se desideri clonare solo alcuni database specifici, puoi utilizzare il file `databases.txt`.
+
+1. Crea un file chiamato `databases.txt` nella root del progetto.
+2. Elenca i nomi dei database desiderati, uno per riga:
+3. Eseguendo `make dump`, lo strumento:
+    - Escluderà automaticamente tutti gli altri database dal dump dello schema globale.
+    - Estrarrà i dati solo per i database elencati.
+
+Se il file databases.txt non esiste, il sistema tornerà automaticamente alla modalità "dump completo".
+
 ## 🚀 Utilizzo
 
 1. Eseguire il dump dal server remoto
@@ -73,7 +85,14 @@ PERSISTENT      = no
 ├── dumps/        # qui vengono scritti i dump
 ├── initdb.d/     # script di ripristino (restore_all.sh)
 └── pgdata/       # volume dati (se PERSISTENT=yes)
-````
+```
+
+# Note e Troubleshooting
+Database di grandi dimensioni: Se il ripristino fallisce per timeout o spazio disco esaurito su tabelle molto pesanti (es. log storici o posizioni GPS), considera di escludere i dati di quelle tabelle modificando il Makefile con l'opzione `--exclude-table-data="schema.nome_tabella"`.
+
+Spazio disco Docker: Su macOS, se ricevi l'errore No space left on device, aumenta il limite del disco virtuale nelle impostazioni di Docker Desktop (Resources > Advanced > Disk image location).
+
+Trigger e Vincoli: Il ripristino viene eseguito con --disable-triggers per evitare errori di validazione logica o cicli di aggiornamento sulle Viste Materializzate durante l'importazione dei dati.
 
 # ⚠️ Note
 

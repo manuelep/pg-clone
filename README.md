@@ -24,7 +24,7 @@ Tutte le variabili principali sono configurabili creando un file `.env` nella ro
 
 Copia e personalizza il seguente esempio:
 
-``env
+```env
 # --- Server Remoto ---
 REMOTE_HOST=144.76.198.119      # L'indirizzo IP o l'host del server da clonare
 REMOTE_PGPORT=5434              # Porta del server remoto (standard: 5432)

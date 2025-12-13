@@ -113,6 +113,7 @@ Trigger e Vincoli: Il ripristino viene eseguito con --disable-triggers per evita
 - Non è una “replica streaming”, ma un clone leggero via dump (snapshot del cluster).
 - L'uso in ambienti di produzione non è raccomandato.
 - Pensato per sviluppo, testing e data recovery.
+- Versione di Postgresql consigliata 16+
 
 ✍️ Autore: Manuele Pesenti
 Licenza: MIT

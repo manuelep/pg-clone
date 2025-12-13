@@ -115,5 +115,34 @@ Trigger e Vincoli: Il ripristino viene eseguito con --disable-triggers per evita
 - Pensato per sviluppo, testing e data recovery.
 - Versione di Postgresql consigliata 16+
 
+## 🤝 Contribuire al progetto
+
+I contributi sono benvenuti 🎉  
+Se utilizzi **pg-clone** e hai esigenze particolari, idee di miglioramento o riscontri problemi, puoi contribuire in diversi modi:
+
+### 🐞 Issue e richieste di supporto
+- Apri una **Issue** per:
+  - segnalare bug o comportamenti inattesi
+  - richiedere supporto per casi d’uso specifici (es. cluster complessi, grandi volumi di dati, configurazioni particolari)
+  - proporre nuove funzionalità o miglioramenti
+- Quando possibile, includi:
+  - sistema operativo
+  - versione di PostgreSQL/PostGIS
+  - output dei comandi e log rilevanti
+
+### 🔧 Sviluppo e nuove implementazioni
+- Puoi **clonare il repository**, implementare le tue modifiche e proporre una **Pull Request**
+- Le PR piccole, focalizzate e ben documentate sono preferite
+- Sentiti libero di ricondividere fork o adattamenti per i tuoi flussi di lavoro
+
+### 🚧 Idee per sviluppi futuri
+Alcune possibili evoluzioni del progetto:
+- Supporto a **Windows** (MobaXterm / PowerShell / WSL / Makefile alternativo)
+- Selettori avanzati per schema e tabelle (inclusioni/esclusioni)
+- Verifica automatica di compatibilità tra versione remota e locale di PostgreSQL/PostGIS
+
+Ogni contributo, anche minimo (documentazione, test, feedback), è utile e apprezzato.
+
+
 ✍️ Autore: Manuele Pesenti
 Licenza: MIT

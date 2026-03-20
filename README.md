@@ -6,9 +6,12 @@ Uno strumento semplice per **clonare un cluster PostgreSQL remoto in locale** us
 
 - Estrae lo **schema globale** (utenti, ruoli, tablespace, ecc.) con `pg_dumpall --schema-only`
 - Estrae i **dati** di ogni database in dump compressi (`pg_dump -Fc`)
-- Supporta `.pgpass` per l’autenticazione senza password
+- Supporta `.pg_service.conf` per la gestione centralizzata delle connessioni
 - Permette il **ripristino automatico** in un container Docker PostGIS
 - Modalità con o senza **persistenza del volume dati**
+- Dump dati **opzionale** (`DATA=no`) per ottenere solo il modello
+- Dump **mirato per tabelle** tramite file `tables.txt`
+- Preflight check automatici su file di configurazione e connessione remota
 - Compatibile Linux e macOS (comandi standard Docker/Makefile)
 
 ## 📦 Prerequisiti
@@ -16,104 +19,187 @@ Uno strumento semplice per **clonare un cluster PostgreSQL remoto in locale** us
 - [Docker](https://docs.docker.com/get-docker/)
 - [Make](https://www.gnu.org/software/make/)
 - Accesso a un cluster PostgreSQL remoto
-- File `.pgpass` configurato con le credenziali
+- File `.pg_service.conf` configurato con le credenziali (vedi sotto)
 
 ## 🔧 Configurazione
 
-Tutte le variabili principali sono configurabili creando un file `.env` nella root del progetto. Questo file viene letto automaticamente dal `Makefile`.
+### File `.pg_service.conf`
 
-Copia e personalizza il seguente esempio:
+Le credenziali di connessione vengono gestite tramite il file `.pg_service.conf`, seguendo le convenzioni standard di PostgreSQL. Il file viene cercato in questo ordine:
 
-```env
-# --- Server Remoto ---
-REMOTE_HOST=144.76.198.119      # L'indirizzo IP o l'host del server da clonare
-REMOTE_PGPORT=5434              # Porta del server remoto (standard: 5432)
+1. Percorso definito in `PGSERVICEFILE` (variabile d'ambiente o file `.env` locale)
+2. `~/.pg_service.conf` (posizione di default su Linux/macOS)
 
-# --- Container Locale ---
-# Adatta il più possibile la versione del dbms locale a quella remota per una piena compatibilità
-DOCKER_IMAGE=postgis/postgis:16-3.5
-CONTAINER_NAME=pg_init          # Nome del container locale
+Struttura del file:
 
-# La porta locale 5432 è già occupata da un altro Postgres? 
-# Impostane una diversa (es. 5435) per evitare conflitti:
-PGPORT=5432                     
+```ini
+[remote]
+host=144.76.198.119
+port=5434
+user=postgres
+password=<password_remota>
 
-# Scegli una password robusta per il superutente del tuo ambiente locale:
-PGPASSWORD=changemeWithSomethingR3allySecure!
-
-# Vuoi che i dati sopravvivano al riavvio del container?
-# 'yes' crea una cartella 'pgdata' locale, 'no' (default) tiene tutto in memoria (effimero):
-PERSISTENT=no
+[local]
+host=localhost
+port=5432
+user=postgres
+password=<password_locale>
 ```
 
-### Note
+> **Importante:** non committare `.pg_service.conf` nel repository. Aggiungilo al `.gitignore`.
 
-- Scegli l'immagine migliore tra quelle disponibili su [hub.docker.com](https://hub.docker.com/search?q=postgresql).
-- Personalizza il nome del container locale per una migliore riconoscibilità del servizio una volta avviato sul tuo sistema.
+### File `.env`
+
+Il file `.env` nella root del progetto permette di personalizzare il comportamento del Makefile senza modificarlo. Nessuna password deve transitare da qui.
+
+```env
+# --- Connessione remota ---
+REMOTE_SERVICE=remote           # Nome della sezione in .pg_service.conf
+PGCONNECT_TIMEOUT=10            # Timeout connessione in secondi (0 = infinito)
+
+# --- Rete Docker per comandi remoti ---
+# host  = condivide lo stack di rete dell'host (necessario con VPN)
+# bridge = rete Docker isolata (solo per server direttamente raggiungibili)
+# REMOTE_NETWORK=host
+
+# --- Container locale ---
+DOCKER_IMAGE=postgis/postgis:16-3.5   # Adattare alla versione remota
+CONTAINER_NAME=pg_init
+PGPORT=5432
+PERSISTENT=no                         # 'yes' per mantenere i dati tra riavvii
+```
+
+### Note sulla connettività remota
+
+Se il server remoto è raggiungibile solo tramite **VPN**, impostare `REMOTE_NETWORK=host` (o lasciare il default) affinché i container Docker condividano lo stack di rete dell'host e vedano il tunnel VPN.
+
+Se il server è esposto tramite **tunnel SSH**, aprire il tunnel prima di eseguire il dump:
+
+```bash
+# Espone la porta remota su localhost
+ssh -N -f -L 0.0.0.0:5555:172.19.81.20:5432 user@ssh-host
+```
+
+E configurare il servizio in `.pg_service.conf` puntando a `localhost:5555`.
 
 ## 🎯 Selezione dei Database (Opzionale)
 
-Per impostazione predefinita, `make dump` esegue il backup di **tutti** i database presenti sul server remoto. Se desideri clonare solo alcuni database specifici, puoi utilizzare il file `databases.txt`.
+Per impostazione predefinita `make dump` opera su **tutti** i database del cluster. Per limitare l'operazione a un sottoinsieme, creare un file `databases.txt` nella root del progetto con un database per riga:
 
-1. Crea un file chiamato `databases.txt` nella root del progetto.
-2. Elenca i nomi dei database desiderati, uno per riga:
-3. Eseguendo `make dump`, lo strumento:
-    - Escluderà automaticamente tutti gli altri database dal dump dello schema globale.
-    - Estrarrà i dati solo per i database elencati.
+```
+mydb
+otherdb
+```
 
-Se il file databases.txt non esiste, il sistema tornerà automaticamente alla modalità "dump completo".
+Il filtro si applica sia al dump dello schema che al dump dei dati.
+
+## 📋 Dump mirato per tabelle (Opzionale)
+
+Per scaricare i dati di sole tabelle specifiche, creare un file `tables.txt` con il formato `db:schema:tabella`, una riga per tabella:
+
+```
+mydb:public:users
+mydb:analytics:events
+otherdb:public:orders
+```
+
+- Se `databases.txt` è presente, le tabelle appartenenti a database non inclusi vengono **ignorate**.
+- L'output è un file per database: `<db>_tables_data.dump`.
+- Se `tables.txt` è presente, ha precedenza sul dump completo dei dati.
 
 ## 🚀 Utilizzo
 
-1. Eseguire il dump dal server remoto
-    ```sh
-    make dump
-    ```
-    Risultato:
-    - dumps/cluster_schema.sql → schema globale
-    - dumps/<dbname>_data.dump → dati dei singoli database
+### 1. Dump dal server remoto
 
-2. Avviare un container locale con ripristino automatico
-    ```sh
-    make run-local-db
-    ```
-    Il container:
-    - Avvia PostgreSQL/PostGIS
-    - Applica lo schema (cluster_schema.sql)
-    - Ripristina i dati (*_data.dump)
-
-3. Controllare i log del container
-    ```sh
-    make log
-    ```
-
-4. Arrestare e rimuovere il container
-    ```sh
-    docker stop pg_init
-    ```
-
-# 📂 Struttura repo
-```bash
-.
-├── Makefile
-├── dumps/        # qui vengono scritti i dump
-├── initdb.d/     # script di ripristino (restore_all.sh)
-└── pgdata/       # volume dati (se PERSISTENT=yes)
+```sh
+make dump
 ```
 
-# Note e Troubleshooting
-Database di grandi dimensioni: Se il ripristino fallisce per timeout o spazio disco esaurito su tabelle molto pesanti (es. log storici o posizioni GPS), considera di escludere i dati di quelle tabelle modificando il Makefile con l'opzione `--exclude-table-data="schema.nome_tabella"`.
+Comportamento:
 
-Spazio disco Docker: Su macOS, se ricevi l'errore No space left on device, aumenta il limite del disco virtuale nelle impostazioni di Docker Desktop (Resources > Advanced > Disk image location).
+| Condizione | Risultato |
+|---|---|
+| Default | Schema + dati completi |
+| `databases.txt` presente | Schema + dati filtrati per i db elencati |
+| `tables.txt` presente | Schema + dati delle sole tabelle elencate |
+| `make dump DATA=no` | Solo schema, nessun dato |
 
-Trigger e Vincoli: Il ripristino viene eseguito con --disable-triggers per evitare errori di validazione logica o cicli di aggiornamento sulle Viste Materializzate durante l'importazione dei dati.
+Output nella cartella `dumps/`:
+- `cluster_schema.sql` — schema globale
+- `<dbname>_data.dump` — dati completi per database
+- `<dbname>_tables_data.dump` — dati mirati per tabelle
 
-# ⚠️ Note
+È anche possibile invocare i target separatamente:
 
-- Non è una “replica streaming”, ma un clone leggero via dump (snapshot del cluster).
+```sh
+make dump-schema          # solo schema
+make dump-data            # solo dati completi
+make dump-tables          # solo tabelle da tables.txt
+```
+
+### 2. Avviare il container locale con ripristino automatico
+
+```sh
+make run-local-db
+```
+
+Il container:
+- Avvia PostgreSQL/PostGIS
+- Applica lo schema (`cluster_schema.sql`)
+- Ripristina i dati (`*_data.dump`, `*_tables_data.dump`)
+
+### 3. Controllare i log del container
+
+```sh
+make log
+```
+
+### 4. Arrestare il container
+
+```sh
+make stop
+```
+
+## 📂 Struttura repo
+
+```
+.
+├── Makefile
+├── .env               # configurazione locale (non committare)
+├── databases.txt      # filtro database (opzionale, non committare)
+├── tables.txt         # filtro tabelle (opzionale, non committare)
+├── dumps/             # dump generati
+├── initdb.d/          # script di ripristino (restore_all.sh)
+└── pgdata/            # volume dati (se PERSISTENT=yes)
+```
+
+## 🔒 File da aggiungere al `.gitignore`
+
+```
+.env
+.pg_service.conf
+databases.txt
+tables.txt
+dumps/
+pgdata/
+```
+
+## Note e Troubleshooting
+
+**Database di grandi dimensioni:** se il ripristino fallisce per timeout o spazio disco esaurito su tabelle molto pesanti, considera di escludere i dati di quelle tabelle con `--exclude-table-data="schema.nome_tabella"` nel Makefile.
+
+**Spazio disco Docker:** su macOS, se ricevi l'errore `No space left on device`, aumenta il limite del disco virtuale nelle impostazioni di Docker Desktop (Resources > Advanced > Disk image location).
+
+**Trigger e Vincoli:** il ripristino viene eseguito con `--disable-triggers` per evitare errori di validazione logica o cicli di aggiornamento sulle Viste Materializzate durante l'importazione dei dati.
+
+**Preflight check:** prima di ogni dump, il Makefile verifica automaticamente che il file `.pg_service.conf` esista e che la connessione remota sia raggiungibile. In caso di errore viene mostrato un messaggio diagnostico con le possibili cause.
+
+## ⚠️ Note
+
+- Non è una "replica streaming", ma un clone leggero via dump (snapshot del cluster).
 - L'uso in ambienti di produzione non è raccomandato.
 - Pensato per sviluppo, testing e data recovery.
-- Versione di Postgresql consigliata 16+
+- Versione di PostgreSQL consigliata: 16+
 
 ## 🤝 Contribuire al progetto
 
@@ -121,28 +207,27 @@ I contributi sono benvenuti 🎉
 Se utilizzi **pg-clone** e hai esigenze particolari, idee di miglioramento o riscontri problemi, puoi contribuire in diversi modi:
 
 ### 🐞 Issue e richieste di supporto
-- Apri una **Issue** per:
-  - segnalare bug o comportamenti inattesi
-  - richiedere supporto per casi d’uso specifici (es. cluster complessi, grandi volumi di dati, configurazioni particolari)
-  - proporre nuove funzionalità o miglioramenti
-- Quando possibile, includi:
-  - sistema operativo
-  - versione di PostgreSQL/PostGIS
-  - output dei comandi e log rilevanti
+
+Apri una **Issue** per:
+- segnalare bug o comportamenti inattesi
+- richiedere supporto per casi d'uso specifici (es. cluster complessi, grandi volumi di dati, configurazioni particolari)
+- proporre nuove funzionalità o miglioramenti
+
+Quando possibile, includi: sistema operativo, versione di PostgreSQL/PostGIS, output dei comandi e log rilevanti.
 
 ### 🔧 Sviluppo e nuove implementazioni
-- Puoi **clonare il repository**, implementare le tue modifiche e proporre una **Pull Request**
+
+- Clona il repository, implementa le modifiche e proponi una **Pull Request**
 - Le PR piccole, focalizzate e ben documentate sono preferite
 - Sentiti libero di ricondividere fork o adattamenti per i tuoi flussi di lavoro
 
 ### 🚧 Idee per sviluppi futuri
-Alcune possibili evoluzioni del progetto:
+
 - Supporto a **Windows** (MobaXterm / PowerShell / WSL / Makefile alternativo)
 - Selettori avanzati per schema e tabelle (inclusioni/esclusioni)
 - Verifica automatica di compatibilità tra versione remota e locale di PostgreSQL/PostGIS
 
 Ogni contributo, anche minimo (documentazione, test, feedback), è utile e apprezzato.
 
-
-✍️ Autore: Manuele Pesenti
+✍️ Autore: Manuele Pesenti  
 Licenza: MIT

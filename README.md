@@ -77,7 +77,7 @@ Se il server è esposto tramite **tunnel SSH**, aprire il tunnel prima di esegui
 
 ```bash
 # Espone la porta remota su localhost
-ssh -N -f -L 0.0.0.0:5555:172.19.81.20:5432 user@ssh-host
+ssh -N -f -L 0.0.0.0:5555:xxx.xxx.xxx.xxx:5432 user@ssh-host
 ```
 
 E configurare il servizio in `.pg_service.conf` puntando a `localhost:5555`.
